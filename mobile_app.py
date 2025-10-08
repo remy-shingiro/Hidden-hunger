@@ -270,6 +270,32 @@ class MobileMalnutritionApp:
         self.data = None
         self.load_data()
         self.offline_mode = False
+        # Initialize navigation state
+        if "mobile_active_view" not in st.session_state:
+            st.session_state["mobile_active_view"] = "dashboard"
+    
+    def _compute_risk_level(self, row):
+        """Return risk level using available columns, with robust fallbacks."""
+        # Use model output if present
+        if "predicted_risk_level" in row.index and pd.notna(row["predicted_risk_level"]):
+            return str(row["predicted_risk_level"])  # High/Medium/Low
+        # Fallback: use Malnutrition_Index percentile thresholds
+        if "Malnutrition_Index" in self.data.columns:
+            series = pd.to_numeric(self.data["Malnutrition_Index"], errors="coerce").fillna(0)
+            val = pd.to_numeric(row.get("Malnutrition_Index", 0), errors="coerce")
+        else:
+            # Fallback to Stunted_pct
+            series = pd.to_numeric(self.data.get("Stunted_pct", pd.Series(dtype=float)), errors="coerce").fillna(0)
+            val = pd.to_numeric(row.get("Stunted_pct", 0), errors="coerce")
+        if len(series) == 0:
+            return "Unknown"
+        q75 = series.quantile(0.75)
+        q40 = series.quantile(0.40)
+        if val >= q75:
+            return "High"
+        if val >= q40:
+            return "Medium"
+        return "Low"
     
     def load_data(self):
         """Load data with offline fallback"""
@@ -310,7 +336,12 @@ class MobileMalnutritionApp:
         
         # Calculate stats
         total_districts = len(self.data)
-        high_risk = len(self.data[self.data.get("predicted_risk_level", "Low") == "High"]) if "predicted_risk_level" in self.data.columns else 0
+        if "predicted_risk_level" in self.data.columns:
+            high_risk = int((self.data["predicted_risk_level"].astype(str) == "High").sum())
+        else:
+            # Derive using fallback computation
+            derived_levels = self.data.apply(self._compute_risk_level, axis=1)
+            high_risk = int((derived_levels == "High").sum())
         total_children = self.data["Children_Under5"].sum() if "Children_Under5" in self.data.columns else 0
         avg_stunted = self.data["Stunted_pct"].mean() if "Stunted_pct" in self.data.columns else 0
         
@@ -351,9 +382,11 @@ class MobileMalnutritionApp:
         else:
             filtered_districts = self.data
         
-        # District list
+        # District list with computed risk levels
         for idx, (_, district) in enumerate(filtered_districts.head(10).iterrows()):
-            with st.expander(f"{district['District']} - Risk: {district.get('predicted_risk_level', 'Unknown')}"):
+            risk_level = self._compute_risk_level(district)
+            risk_emoji = {"High": "🔴", "Medium": "🟡", "Low": "🟢"}.get(risk_level, "⚪")
+            with st.expander(f"{district['District']} - Risk: {risk_emoji} {risk_level}"):
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -364,10 +397,8 @@ class MobileMalnutritionApp:
                     st.metric("Underweight", f"{district['Underweight']:,}")
                     st.metric("Wasted", f"{district['Wasted']:,}")
                 
-                # Risk assessment
-                if "predicted_risk_level" in district:
-                    risk_color = {"High": "🔴", "Medium": "🟡", "Low": "🟢"}.get(district["predicted_risk_level"], "⚪")
-                    st.write(f"**Risk Level:** {risk_color} {district['predicted_risk_level']}")
+                # Risk assessment display
+                st.write(f"**Risk Level:** {risk_emoji} {risk_level}")
     
     def render_quick_assessment(self):
         """Render quick malnutrition assessment tool"""
@@ -507,44 +538,33 @@ class MobileMalnutritionApp:
             st.metric("Wasting Rate", f"{wasting_rate:.1f}%")
     
     def render_mobile_navigation(self):
-        """Render mobile navigation"""
-        st.markdown("""
-        <div class="mobile-nav">
-            <a href="#" class="nav-item active">
-                <div class="nav-icon">📊</div>
-                <div>Dashboard</div>
-            </a>
-            <a href="#" class="nav-item">
-                <div class="nav-icon">🔍</div>
-                <div>Search</div>
-            </a>
-            <a href="#" class="nav-item">
-                <div class="nav-icon">⚡</div>
-                <div>Assess</div>
-            </a>
-            <a href="#" class="nav-item">
-                <div class="nav-icon">🚨</div>
-                <div>Alerts</div>
-            </a>
-            <a href="#" class="nav-item">
-                <div class="nav-icon">📱</div>
-                <div>Offline</div>
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
+        """Render interactive bottom navigation using buttons and session state"""
+        nav_cols = st.columns(5)
+        with nav_cols[0]:
+            if st.button("📊\nDashboard", key="nav_dashboard"):
+                st.session_state["mobile_active_view"] = "dashboard"
+        with nav_cols[1]:
+            if st.button("🔍\nSearch", key="nav_search"):
+                st.session_state["mobile_active_view"] = "search"
+        with nav_cols[2]:
+            if st.button("⚡\nAssess", key="nav_assess"):
+                st.session_state["mobile_active_view"] = "assess"
+        with nav_cols[3]:
+            if st.button("🚨\nAlerts", key="nav_alerts"):
+                st.session_state["mobile_active_view"] = "alerts"
+        with nav_cols[4]:
+            if st.button("📱\nOffline", key="nav_offline"):
+                st.session_state["mobile_active_view"] = "offline"
     
     def run(self):
         """Main mobile app runner"""
         self.render_mobile_header()
         self.render_offline_indicator()
         
-        # Mobile navigation tabs
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "🔍 Search", "⚡ Assess", "🚨 Alerts", "📱 Offline"])
-        
-        with tab1:
+        # Render content based on active view
+        active = st.session_state.get("mobile_active_view", "dashboard")
+        if active == "dashboard":
             self.render_quick_stats()
-            
-            # Simple chart
             if "Stunted_pct" in self.data.columns:
                 fig = px.bar(
                     self.data.head(10),
@@ -555,17 +575,13 @@ class MobileMalnutritionApp:
                 )
                 fig.update_xaxes(tickangle=45)
                 st.plotly_chart(fig, use_container_width=True)
-        
-        with tab2:
+        elif active == "search":
             self.render_district_selector()
-        
-        with tab3:
+        elif active == "assess":
             self.render_quick_assessment()
-        
-        with tab4:
+        elif active == "alerts":
             self.render_emergency_alerts()
-        
-        with tab5:
+        elif active == "offline":
             self.render_offline_features()
         
         # Mobile navigation (hidden on desktop)
