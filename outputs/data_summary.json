@@ -1,0 +1,13 @@
+{
+  "total_districts": 30,
+  "total_features": 38,
+  "missing_data_percentage": 0.0,
+  "high_risk_districts": 0,
+  "average_malnutrition_index": 13.06412080716208,
+  "data_sources": [
+    "Malnutrition Survey",
+    "Climate Data",
+    "Economic Indicators",
+    "Geographic Data"
+  ]
+}
