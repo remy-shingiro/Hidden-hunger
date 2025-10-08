@@ -226,6 +226,11 @@ class MalnutritionDashboard:
                 how="left"
             )
             
+            # Fix JSON serialization issues - convert all non-geometry columns to strings
+            for col in self.geo_data.columns:
+                if col != "geometry":
+                    self.geo_data[col] = self.geo_data[col].astype(str)
+            
         except FileNotFoundError as e:
             st.error(f"Data file not found: {e}")
             st.stop()
@@ -405,21 +410,26 @@ class MalnutritionDashboard:
                 "fillOpacity": 0.7
             }
         else:
-            # Continuous color mapping
-            values = self.geo_data[map_metric].fillna(0)
+            # Continuous color mapping - convert to numeric first
+            values = pd.to_numeric(self.geo_data[map_metric], errors='coerce').fillna(0)
             max_val = values.max()
             min_val = values.min()
             
             def get_color(val):
-                if pd.isna(val):
+                if pd.isna(val) or val == "nan" or val == "":
                     return "gray"
-                normalized = (val - min_val) / (max_val - min_val) if max_val > min_val else 0
-                if normalized > 0.7:
-                    return "red"
-                elif normalized > 0.4:
-                    return "orange"
-                else:
-                    return "green"
+                try:
+                    # Convert to float for calculation
+                    num_val = float(val)
+                    normalized = (num_val - min_val) / (max_val - min_val) if max_val > min_val else 0
+                    if normalized > 0.7:
+                        return "red"
+                    elif normalized > 0.4:
+                        return "orange"
+                    else:
+                        return "green"
+                except (ValueError, TypeError):
+                    return "gray"
             
             style_function = lambda feature: {
                 "fillColor": get_color(feature["properties"].get(map_metric)),
@@ -434,11 +444,13 @@ class MalnutritionDashboard:
             style_function=style_function,
             tooltip=folium.GeoJsonTooltip(
                 fields=["District", map_metric, "Children_Under5", "predicted_risk_level"],
-                aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Risk Level"]
+                aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Risk Level"],
+                localize=True
             ),
             popup=folium.GeoJsonPopup(
                 fields=["District", map_metric, "Children_Under5", "Stunted_pct", "Underweight_pct"],
-                aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Stunted %", "Underweight %"]
+                aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Stunted %", "Underweight %"],
+                localize=True
             )
         ).add_to(m)
         
@@ -453,10 +465,14 @@ class MalnutritionDashboard:
             st.metric("Total Districts", len(self.geo_data))
         
         with col2:
-            st.metric("High Risk Districts", len(self.geo_data[self.geo_data["predicted_risk_level"] == "High"]))
+            high_risk_count = len(self.geo_data[self.geo_data["predicted_risk_level"] == "High"])
+            st.metric("High Risk Districts", high_risk_count)
         
         with col3:
-            st.metric("Average Risk Probability", f"{self.geo_data['risk_probability'].mean():.1%}")
+            # Convert risk_probability to numeric for calculation
+            risk_probs = pd.to_numeric(self.geo_data['risk_probability'], errors='coerce').fillna(0)
+            avg_risk = risk_probs.mean()
+            st.metric("Average Risk Probability", f"{avg_risk:.1%}")
     
     def render_predictions_page(self):
         """Render the AI predictions page"""

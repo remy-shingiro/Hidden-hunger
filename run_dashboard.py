@@ -34,7 +34,7 @@ def main():
     print("\nAvailable Applications:")
     print("1. Main Dashboard (enhanced_dashboard.py)")
     print("2. Mobile App (mobile_app.py)")
-    print("3. Real-time Monitor (realtime_integration.py)")
+    print("3. Real-time Monitor (fixed_realtime_integration.py)")
     print("4. API Server (api_system.py)")
     
     choice = input("\nSelect application (1-4) or press Enter for main dashboard: ").strip()
@@ -44,7 +44,7 @@ def main():
         subprocess.run([sys.executable, "-m", "streamlit", "run", "mobile_app.py"])
     elif choice == "3":
         print("Starting Real-time Monitor...")
-        subprocess.run([sys.executable, "-m", "streamlit", "run", "realtime_integration.py"])
+        subprocess.run([sys.executable, "-m", "streamlit", "run", "fixed_realtime_integration.py"])
     elif choice == "4":
         print("Starting API Server...")
         subprocess.run([sys.executable, "api_system.py"])

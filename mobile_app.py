@@ -22,6 +22,15 @@ st.set_page_config(
 # Mobile-optimized CSS
 st.markdown("""
 <style>
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global Styles */
+    .main {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
     /* Mobile-first responsive design */
     @media (max-width: 768px) {
         .main .block-container {
@@ -48,12 +57,13 @@ st.markdown("""
         bottom: 0;
         left: 0;
         right: 0;
-        background: white;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-top: 1px solid #e0e0e0;
         padding: 0.5rem;
         z-index: 1000;
         display: flex;
         justify-content: space-around;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     }
     
     .nav-item {
@@ -62,12 +72,20 @@ st.markdown("""
         align-items: center;
         padding: 0.5rem;
         text-decoration: none;
-        color: #666;
+        color: rgba(255,255,255,0.7);
         font-size: 0.8rem;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+    }
+    
+    .nav-item:hover {
+        color: white;
+        background: rgba(255,255,255,0.1);
     }
     
     .nav-item.active {
-        color: #667eea;
+        color: white;
+        background: rgba(255,255,255,0.2);
     }
     
     .nav-icon {
@@ -81,11 +99,12 @@ st.markdown("""
         top: 0;
         left: 0;
         right: 0;
-        background: #f39c12;
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
         color: white;
         text-align: center;
         padding: 0.5rem;
         z-index: 1001;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     
     /* Touch-friendly buttons */
@@ -93,40 +112,110 @@ st.markdown("""
         min-height: 44px;
         min-width: 44px;
         padding: 0.75rem 1rem;
-        border-radius: 8px;
+        border-radius: 12px;
         border: none;
-        background: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         font-size: 1rem;
+        font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .touch-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
     .touch-button:active {
         transform: scale(0.95);
-        background: #5a6fd8;
     }
     
     /* Card styles for mobile */
     .mobile-card {
         background: white;
-        border-radius: 12px;
-        padding: 1rem;
+        border-radius: 16px;
+        padding: 1.5rem;
         margin-bottom: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         border-left: 4px solid #667eea;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
     }
     
     .mobile-card h3 {
         margin: 0 0 0.5rem 0;
         color: #2c3e50;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
+        font-weight: 600;
     }
     
     .mobile-card p {
         margin: 0;
         color: #7f8c8d;
         font-size: 0.9rem;
+        line-height: 1.4;
+    }
+    
+    /* Stats cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-top: 3px solid #667eea;
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        color: #7f8c8d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Alert cards */
+    .alert-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-left: 4px solid #e74c3c;
+    }
+    
+    .alert-card.high {
+        border-left-color: #e74c3c;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+    }
+    
+    .alert-card.medium {
+        border-left-color: #f39c12;
+        background: linear-gradient(135deg, #fffbf0 0%, #ffffff 100%);
+    }
+    
+    .alert-card.low {
+        border-left-color: #27ae60;
+        background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
     }
     
     /* Hide desktop elements on mobile */
@@ -141,6 +230,37 @@ st.markdown("""
         .mobile-only {
             display: none;
         }
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #5a6fd8;
+    }
+    
+    /* Loading animation */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(102, 126, 234, 0.3);
+        border-radius: 50%;
+        border-top-color: #667eea;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -186,7 +306,7 @@ class MobileMalnutritionApp:
     
     def render_quick_stats(self):
         """Render quick statistics cards"""
-        st.subheader("📊 Quick Stats")
+        st.markdown("### 📊 Quick Stats")
         
         # Calculate stats
         total_districts = len(self.data)
@@ -194,37 +314,27 @@ class MobileMalnutritionApp:
         total_children = self.data["Children_Under5"].sum() if "Children_Under5" in self.data.columns else 0
         avg_stunted = self.data["Stunted_pct"].mean() if "Stunted_pct" in self.data.columns else 0
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="mobile-card">
-                <h3>{total_districts}</h3>
-                <p>Total Districts</p>
+        # Create beautiful stats grid
+        st.markdown(f"""
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{total_districts}</div>
+                <div class="stat-label">Total Districts</div>
             </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"""
-            <div class="mobile-card">
-                <h3>{high_risk}</h3>
-                <p>High Risk Districts</p>
+            <div class="stat-card">
+                <div class="stat-value">{high_risk}</div>
+                <div class="stat-label">High Risk</div>
             </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="mobile-card">
-                <h3>{total_children:,}</h3>
-                <p>Children Under 5</p>
+            <div class="stat-card">
+                <div class="stat-value">{total_children:,}</div>
+                <div class="stat-label">Children Under 5</div>
             </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"""
-            <div class="mobile-card">
-                <h3>{avg_stunted:.1f}%</h3>
-                <p>Avg Stunting Rate</p>
+            <div class="stat-card">
+                <div class="stat-value">{avg_stunted:.1f}%</div>
+                <div class="stat-label">Avg Stunting</div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
     
     def render_district_selector(self):
         """Render district selector with search"""
