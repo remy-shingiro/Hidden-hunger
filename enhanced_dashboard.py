@@ -183,57 +183,68 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# -------- Performance-optimized loaders --------
+@st.cache_data(show_spinner=False)
+def load_core_data():
+    """Load CSV and Geo data once; sanitize for fast map rendering."""
+    # Load enhanced data
+    data = pd.read_csv("outputs/enhanced_malnutrition_data.csv", low_memory=False)
+    # Attach predictions if available
+    try:
+        predictions = pd.read_csv("outputs/predictions_advanced.csv")
+        data = data.merge(
+            predictions[["District", "predicted_risk", "risk_probability", "predicted_risk_level"]],
+            on="District",
+            how="left"
+        )
+    except FileNotFoundError:
+        # Lightweight fallback
+        if "Malnutrition_Index" in data.columns:
+            data["predicted_risk"] = np.where(
+                data["Malnutrition_Index"] > data["Malnutrition_Index"].quantile(0.75), 1, 0
+            )
+            data["risk_probability"] = data["Malnutrition_Index"] / 100
+            data["predicted_risk_level"] = pd.cut(
+                data["risk_probability"], bins=[0, 0.3, 0.7, 1.0], labels=["Low", "Medium", "High"]
+            )
+
+    # Load and standardize geo data
+    gdf = gpd.read_file("data/rwanda_districts.geojson")
+    gdf["district"] = gdf["district"].astype(str).str.strip().str.title()
+    data["District"] = data["District"].astype(str).str.strip().str.title()
+
+    merged = gdf.merge(data, left_on="district", right_on="District", how="left")
+
+    # Sanitize for JSON: keep numerics numeric, convert datetimes to ISO, others to str
+    for col in merged.columns:
+        if col == "geometry":
+            continue
+        if pd.api.types.is_datetime64_any_dtype(merged[col]):
+            merged[col] = pd.to_datetime(merged[col], errors="coerce").dt.strftime("%Y-%m-%dT%H:%M:%S")
+        elif pd.api.types.is_numeric_dtype(merged[col]):
+            # keep numeric as-is for fast styling computations
+            merged[col] = pd.to_numeric(merged[col], errors="coerce")
+        else:
+            merged[col] = merged[col].astype(str)
+
+    # Cache GeoJSON string for Folium (fast path)
+    geojson_str = merged.to_json()
+
+    # Precompute numeric metric series for quick min/max lookups
+    metric_names = ["Malnutrition_Index", "risk_probability", "Stunted_pct", "Underweight_pct"]
+    numeric_series = {
+        m: pd.to_numeric(merged.get(m, pd.Series(dtype=float)), errors="coerce").fillna(0) for m in metric_names
+    }
+
+    return data, merged, geojson_str, numeric_series
+
 class MalnutritionDashboard:
     def __init__(self):
-        self.data = None
-        self.geo_data = None
-        self.load_data()
+        self.data, self.geo_data, self.geojson_str, self.numeric_series = load_core_data()
     
     def load_data(self):
-        """Load and prepare data"""
-        try:
-            # Load enhanced data
-            self.data = pd.read_csv("outputs/enhanced_malnutrition_data.csv")
-            
-            # Load predictions if available
-            try:
-                predictions = pd.read_csv("outputs/predictions_advanced.csv")
-                self.data = self.data.merge(
-                    predictions[["District", "predicted_risk", "risk_probability", "predicted_risk_level"]], 
-                    on="District", 
-                    how="left"
-                )
-            except FileNotFoundError:
-                # Fallback to basic predictions
-                self.data["predicted_risk"] = np.where(self.data["Malnutrition_Index"] > self.data["Malnutrition_Index"].quantile(0.75), 1, 0)
-                self.data["risk_probability"] = self.data["Malnutrition_Index"] / 100
-                self.data["predicted_risk_level"] = pd.cut(
-                    self.data["risk_probability"],
-                    bins=[0, 0.3, 0.7, 1.0],
-                    labels=["Low", "Medium", "High"]
-                )
-            
-            # Load geo data
-            self.geo_data = gpd.read_file("data/rwanda_districts.geojson")
-            self.geo_data["district"] = self.geo_data["district"].str.strip().str.title()
-            self.data["District"] = self.data["District"].str.strip().str.title()
-            
-            # Merge geo data
-            self.geo_data = self.geo_data.merge(
-                self.data, 
-                left_on="district", 
-                right_on="District", 
-                how="left"
-            )
-            
-            # Fix JSON serialization issues - convert all non-geometry columns to strings
-            for col in self.geo_data.columns:
-                if col != "geometry":
-                    self.geo_data[col] = self.geo_data[col].astype(str)
-            
-        except FileNotFoundError as e:
-            st.error(f"Data file not found: {e}")
-            st.stop()
+        # Kept for backward compatibility if called; just refresh cache
+        self.data, self.geo_data, self.geojson_str, self.numeric_series = load_core_data()
     
     def render_header(self):
         """Render the header section"""
@@ -410,8 +421,8 @@ class MalnutritionDashboard:
                 "fillOpacity": 0.7
             }
         else:
-            # Continuous color mapping - convert to numeric first
-            values = pd.to_numeric(self.geo_data[map_metric], errors='coerce').fillna(0)
+            # Continuous color mapping - use precomputed numeric series
+            values = self.numeric_series.get(map_metric, pd.Series(dtype=float))
             max_val = values.max()
             min_val = values.min()
             
@@ -438,9 +449,9 @@ class MalnutritionDashboard:
                 "fillOpacity": 0.7
             }
         
-        # Add GeoJSON
+        # Add GeoJSON (use cached string for speed)
         folium.GeoJson(
-            self.geo_data,
+            self.geojson_str,
             style_function=style_function,
             tooltip=folium.GeoJsonTooltip(
                 fields=["District", map_metric, "Children_Under5", "predicted_risk_level"],

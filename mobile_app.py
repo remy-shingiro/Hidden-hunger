@@ -297,20 +297,34 @@ class MobileMalnutritionApp:
             return "Medium"
         return "Low"
     
-    def load_data(self):
-        """Load data with offline fallback"""
+    @st.cache_data(show_spinner=False)
+    def _load_data_cached(_ts: int):
+        # _ts allows manual cache busting if needed
+        df = None
+        offline = False
         try:
-            self.data = pd.read_csv("outputs/enhanced_malnutrition_data.csv")
-            self.offline_mode = False
+            df = pd.read_csv("outputs/enhanced_malnutrition_data.csv", low_memory=False)
         except FileNotFoundError:
-            # Fallback to basic data
             try:
-                self.data = pd.read_csv("data/malnutrition_sample.csv")
-                self.offline_mode = True
-                st.warning("⚠️ Using offline data. Some features may be limited.")
+                df = pd.read_csv("data/malnutrition_sample.csv", low_memory=False)
+                offline = True
             except FileNotFoundError:
-                st.error("❌ No data available. Please ensure data files are present.")
-                st.stop()
+                raise
+        # Normalize names once
+        if "District" in df.columns:
+            df["District"] = df["District"].astype(str).str.strip().str.title()
+        return df, offline
+
+    def load_data(self):
+        """Load data with offline fallback (cached)."""
+        try:
+            self.data, offline = self._load_data_cached(int(datetime.now().strftime("%Y%m%d")))
+            self.offline_mode = offline
+            if offline:
+                st.warning("⚠️ Using offline data. Some features may be limited.")
+        except FileNotFoundError:
+            st.error("❌ No data available. Please ensure data files are present.")
+            st.stop()
     
     def render_mobile_header(self):
         """Render mobile-optimized header"""

@@ -59,16 +59,20 @@ class RealTimeMonitor:
         self.data = None
         self.load_data()
     
-    def load_data(self):
-        """Load data with fallback"""
+    @st.cache_data(show_spinner=False)
+    def _load_data_cached(_ts: int):
+        df = None
         try:
-            self.data = pd.read_csv("outputs/enhanced_malnutrition_data.csv")
+            df = pd.read_csv("outputs/enhanced_malnutrition_data.csv", low_memory=False)
         except FileNotFoundError:
-            try:
-                self.data = pd.read_csv("data/malnutrition_sample.csv")
-            except FileNotFoundError:
-                st.error("No data files found. Please ensure data files are present.")
-                st.stop()
+            df = pd.read_csv("data/malnutrition_sample.csv", low_memory=False)
+        if "District" in df.columns:
+            df["District"] = df["District"].astype(str).str.strip().str.title()
+        return df
+
+    def load_data(self):
+        """Load data with fallback (cached)"""
+        self.data = self._load_data_cached(int(datetime.now().strftime("%Y%m%d")))
     
     def generate_live_metrics(self):
         """Generate simulated live metrics"""
