@@ -365,18 +365,29 @@ class MalnutritionDashboard:
             fig.update_layout(xaxis_title="Month", yaxis_title="Malnutrition Index")
             st.plotly_chart(fig, use_container_width=True)
         
-        # Top 5 high-risk districts
+        # Top 5 high-risk districts (ensure we always show 5)
         st.subheader("🚨 Top 5 High-Risk Districts")
-        high_risk_districts = self.data[self.data["predicted_risk_level"] == "High"].nlargest(5, "risk_probability")
+        high_only = self.data[self.data["predicted_risk_level"] == "High"].copy()
+        high_only["risk_probability"] = pd.to_numeric(high_only.get("risk_probability"), errors="coerce").fillna(0)
+        top_high = high_only.sort_values("risk_probability", ascending=False).head(5)
+        if len(top_high) < 5:
+            # Fill remaining with next highest by risk_probability overall
+            remaining = 5 - len(top_high)
+            others = self.data[~self.data["District"].isin(top_high["District"])].copy()
+            others["risk_probability"] = pd.to_numeric(others.get("risk_probability"), errors="coerce").fillna(0)
+            fallback = others.sort_values("risk_probability", ascending=False).head(remaining)
+            top_five = pd.concat([top_high, fallback])
+        else:
+            top_five = top_high
         
-        for idx, (_, district) in enumerate(high_risk_districts.iterrows(), 1):
-            risk_class = "alert-high" if district["risk_probability"] > 0.8 else "alert-medium"
+        for idx, (_, district) in enumerate(top_five.iterrows(), 1):
+            risk_class = "alert-high" if float(district["risk_probability"]) > 0.8 else "alert-medium"
             st.markdown(f"""
             <div class="alert {risk_class}">
                 <strong>{idx}. {district['District']}</strong><br>
-                Risk Probability: {district['risk_probability']:.1%} | 
-                Malnutrition Index: {district['Malnutrition_Index']:.1f} | 
-                Children Affected: {district['Children_Under5']:,}
+                Risk Probability: {float(district['risk_probability']):.1%} | 
+                Malnutrition Index: {float(district['Malnutrition_Index']):.1f} | 
+                Children Affected: {int(district['Children_Under5']):,}
             </div>
             """, unsafe_allow_html=True)
     
@@ -404,12 +415,15 @@ class MalnutritionDashboard:
         with col3:
             show_predictions = st.checkbox("Show AI Predictions", value=True)
         
-        # Create map
-        m = folium.Map(
-            location=[-1.95, 30.06], 
-            zoom_start=8, 
-            tiles=map_style
-        )
+        # Create map with proper attributions and layout
+        tiles_map = {
+            "cartodbpositron": {"tiles": "CartoDB positron", "attr": "© OpenStreetMap contributors © CartoDB"},
+            "OpenStreetMap": {"tiles": "OpenStreetMap", "attr": "© OpenStreetMap contributors"},
+            "Stamen Terrain": {"tiles": "https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png", "attr": "Map tiles by Stamen Design, CC BY 3.0 — Map data © OpenStreetMap contributors"}
+        }
+        tconf = tiles_map.get(map_style, tiles_map["cartodbpositron"])
+        m = folium.Map(location=[-1.95, 30.06], zoom_start=8, tiles=None)
+        folium.TileLayer(tiles=tconf["tiles"], attr=tconf["attr"], name=map_style).add_to(m)
         
         # Color mapping
         if map_metric == "risk_probability":
@@ -449,41 +463,53 @@ class MalnutritionDashboard:
                 "fillOpacity": 0.7
             }
         
-        # Add GeoJSON (use cached string for speed)
-        folium.GeoJson(
-            self.geojson_str,
-            style_function=style_function,
-            tooltip=folium.GeoJsonTooltip(
-                fields=["District", map_metric, "Children_Under5", "predicted_risk_level"],
-                aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Risk Level"],
-                localize=True
-            ),
-            popup=folium.GeoJsonPopup(
-                fields=["District", map_metric, "Children_Under5", "Stunted_pct", "Underweight_pct"],
-                aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Stunted %", "Underweight %"],
-                localize=True
-            )
-        ).add_to(m)
-        
-        # Display map
-        st_folium(m, width=1000, height=600)
-        
-        # Map statistics
-        st.subheader("Map Statistics")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Total Districts", len(self.geo_data))
-        
-        with col2:
-            high_risk_count = len(self.geo_data[self.geo_data["predicted_risk_level"] == "High"])
-            st.metric("High Risk Districts", high_risk_count)
-        
-        with col3:
-            # Convert risk_probability to numeric for calculation
-            risk_probs = pd.to_numeric(self.geo_data['risk_probability'], errors='coerce').fillna(0)
+        # Layout: map on left, stats on right
+        map_col, stats_col = st.columns([2, 1])
+
+        with map_col:
+            folium.GeoJson(
+                self.geojson_str,
+                style_function=style_function,
+                tooltip=folium.GeoJsonTooltip(
+                    fields=["District", map_metric, "Children_Under5", "predicted_risk_level"],
+                    aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Risk Level"],
+                    localize=True
+                ),
+                popup=folium.GeoJsonPopup(
+                    fields=["District", map_metric, "Children_Under5", "Stunted_pct", "Underweight_pct"],
+                    aliases=["District", map_metric.replace("_", " ").title(), "Children Under 5", "Stunted %", "Underweight %"],
+                    localize=True
+                )
+            ).add_to(m)
+            st_folium(m, use_container_width=True, height=520)
+
+        with stats_col:
+            st.markdown("### Map Statistics")
+            # Card 1
+            total = len(self.geo_data)
+            st.markdown(f"""
+            <div class=\"metric-card\"> 
+                <div class=\"metric-value\">{total}</div>
+                <div class=\"metric-label\">Total Districts</div>
+            </div>
+            """, unsafe_allow_html=True)
+            # Card 2
+            high_risk_count = int((self.geo_data.get("predicted_risk_level", "").astype(str) == "High").sum()) if "predicted_risk_level" in self.geo_data.columns else 0
+            st.markdown(f"""
+            <div class=\"metric-card\"> 
+                <div class=\"metric-value\">{high_risk_count}</div>
+                <div class=\"metric-label\">High Risk Districts</div>
+            </div>
+            """, unsafe_allow_html=True)
+            # Card 3
+            risk_probs = pd.to_numeric(self.geo_data.get('risk_probability', pd.Series(dtype=float)), errors='coerce').fillna(0)
             avg_risk = risk_probs.mean()
-            st.metric("Average Risk Probability", f"{avg_risk:.1%}")
+            st.markdown(f"""
+            <div class=\"metric-card\"> 
+                <div class=\"metric-value\">{avg_risk:.1%}</div>
+                <div class=\"metric-label\">Average Risk Probability</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     def render_predictions_page(self):
         """Render the AI predictions page"""
@@ -649,22 +675,7 @@ class MalnutritionDashboard:
                 for rec in edu_recs:
                     st.markdown(f"• {rec}")
             
-            # Cost-benefit analysis
-            st.subheader("Cost-Benefit Analysis")
-            
-            estimated_cost = district_data["Children_Under5"] * 50  # $50 per child
-            potential_benefit = district_data["Children_Under5"] * 200  # $200 benefit per child
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Estimated Cost", f"${estimated_cost:,}")
-            
-            with col2:
-                st.metric("Potential Benefit", f"${potential_benefit:,}")
-            
-            with col3:
-                st.metric("ROI", f"{(potential_benefit/estimated_cost-1)*100:.0f}%")
+            # Note: Cost-benefit analysis removed per request
     
     def render_analytics_page(self):
         """Render the analytics page"""
