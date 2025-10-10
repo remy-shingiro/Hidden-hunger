@@ -566,9 +566,9 @@ class MalnutritionDashboard:
         <head>
           <meta charset=\"utf-8\" />
           <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-          <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap\" rel=\"stylesheet\">
+          <link href=\"https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap\" rel=\"stylesheet\">
           <style>
-            :root { --glass: rgba(255,255,255,0.30); --glass-border: rgba(255,255,255,0.40); --shadow: rgba(17,24,39,0.12); }
+            :root { --glass: rgba(255,255,255,0.22); --glass-border: rgba(255,255,255,0.55); --shadow: rgba(17,24,39,0.14); }
 
             .risk-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-items: stretch; justify-items: stretch; }
             @media (max-width: 1200px) { .risk-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -576,10 +576,10 @@ class MalnutritionDashboard:
 
             /* Card base with glassmorphism */
             .risk-card { position: relative; padding: 14px; border-radius: 12px; border: 1px solid var(--glass-border);
-                         box-shadow: 0 2px 8px var(--shadow); color: #0b1020; background: var(--glass);
-                         overflow: hidden; transform: translateY(8px); opacity: 0; backdrop-filter: blur(10px);
-                         animation: slideUpFade 520ms ease forwards; transition: transform .2s ease, box-shadow .2s ease; }
-            .risk-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(17,24,39,0.20), 0 0 0 1px rgba(255,255,255,0.35) inset; }
+                         box-shadow: 0 2px 10px var(--shadow), inset 0 0 0 1px rgba(255,255,255,0.15); color: #0b1020; background: var(--glass);
+                         overflow: hidden; transform: translateY(8px); opacity: 0; backdrop-filter: blur(14px);
+                         animation: slideUpFade 520ms ease forwards; transition: transform .22s ease, box-shadow .22s ease; }
+            .risk-card:hover { transform: translateY(-4px); box-shadow: 0 16px 30px rgba(17,24,39,0.22), 0 0 0 1px rgba(255,255,255,0.45) inset; }
 
             /* Risk background tint layers */
             .risk-card.risk-red::before, .risk-card.risk-orange::before, .risk-card.risk-yellow::before {
@@ -611,7 +611,7 @@ class MalnutritionDashboard:
             @keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes fill { from { width: 0; } to { width: var(--target); } }
 
-            body { margin: 0; padding: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+            body { margin: 0; padding: 0; font-family: Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
           </style>
         </head>
         <body>
