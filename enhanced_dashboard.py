@@ -415,11 +415,11 @@ class MalnutritionDashboard:
         with col_left:
             st.markdown("""
             <div class="header-container">
-                <img class="flag-icon" src="https://upload.wikimedia.org/wikipedia/commons/1/17/Flag_of_Rwanda.svg" alt="Rwanda Flag"/>
-                <div>
-                    <div class="header-title">Rwanda Malnutrition Intelligence Platform</div>
-                    <div class="header-subtitle">Ending Hidden Hunger Through Data-Driven Solutions</div>
-                </div>
+                                <img class="flag-icon" src="https://upload.wikimedia.org/wikipedia/commons/1/17/Flag_of_Rwanda.svg" alt="Rwanda Flag"/>
+                                <div>
+                                    <div class="header-title">Rwanda Malnutrition Intelligence Platform</div>
+                <div class="header-subtitle">Ending Hidden Hunger Through Data-Driven Solutions</div>
+                                </div>
             </div>
             """, unsafe_allow_html=True)
         with col_right:
@@ -525,8 +525,9 @@ class MalnutritionDashboard:
             st.plotly_chart(fig, use_container_width=True)
         
         # Top 5 high-risk districts (modern leaderboard)
+        st.markdown('<div style="margin-top:-10px;"></div>', unsafe_allow_html=True)
         st.markdown('<div class="gradient-title">⚠️ AI-Identified High-Risk Districts</div>', unsafe_allow_html=True)
-        st.markdown('<div style="margin:-2px 0 10px 0; color:#475569; font-size:0.95rem;">Based on AI-driven malnutrition risk probabilities.</div>', unsafe_allow_html=True)
+        st.markdown('<div style="margin:-2px 0 5px 0; color:#475569; font-size:0.95rem;">Based on AI-driven malnutrition risk probabilities.</div>', unsafe_allow_html=True)
 
         # Compute top 5 by risk_probability with fallback logic
         df_copy = self.data.copy()
@@ -570,7 +571,7 @@ class MalnutritionDashboard:
                 <div>
                   <div class="risk-district">{district_name}</div>
                   <div class="{sev_class}"><span class="sev-label">{sev_label}</span></div>
-                </div>
+            </div>
                 <div class="gauge" style="--p:{prob_pct};" title="{prob_pct}%"></div>
               </div>
               <div class="progress" aria-label="Risk Probability">
@@ -648,7 +649,7 @@ class MalnutritionDashboard:
         </html>
         """
         )
-        components.html(full_html, height=480, scrolling=False)
+        components.html(full_html, height=380, scrolling=False)
     
     def render_map_page(self):
         """Render the interactive map page"""
