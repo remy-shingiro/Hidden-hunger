@@ -36,28 +36,42 @@ st.markdown("""
     
     /* Header Styles */
     .header-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 15px;
-        margin-bottom: 2rem;
-        color: white;
-        text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        background: linear-gradient(90deg, #5b7cfa, #7e57c2);
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        color: #fff;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 8px 24px rgba(91, 124, 250, 0.25);
     }
-    
+
+    .flag-icon {
+        height: 28px;
+        width: auto;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
     .header-title {
-        font-size: 2.5rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        margin-bottom: 0.5rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        margin: 0;
+        letter-spacing: .2px;
     }
     
     .header-subtitle {
-        font-size: 1.2rem;
+        font-size: 0.9rem;
         opacity: 0.9;
-        font-weight: 300;
+        font-weight: 400;
+        margin: 0;
     }
-    
+
     /* Card Styles */
     .metric-card {
         background: white;
@@ -90,36 +104,42 @@ st.markdown("""
     
     /* Navigation Styles */
     .nav-container {
-        background: white;
-        padding: 1rem;
+        background: transparent;
+        padding: 0.5rem 0.25rem;
         border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        margin-bottom: 2rem;
+        box-shadow: none;
+        margin-bottom: 1rem;
     }
     
     .nav-button {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        margin: 0.25rem;
+        background: #ffffff;
+        border: 1px solid #e6e8f0;
+        padding: 0.45rem 0.9rem;
+        border-radius: 9999px;
+        margin: 0.2rem;
         cursor: pointer;
-        transition: all 0.2s ease;
-        font-weight: 500;
+        transition: all 0.18s ease-in-out;
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #0f172a;
+        box-shadow: 0 1px 0 rgba(16,24,40,0.04);
+        width: 100%;
     }
     
     .nav-button:hover {
-        background: #667eea;
-        color: white;
-        border-color: #667eea;
+        background: linear-gradient(90deg, rgba(91,124,250,0.10), rgba(126,87,194,0.10));
+        color: #111827;
+        border-color: rgba(91,124,250,0.35);
+        transform: translateY(-1px);
     }
     
     .nav-button.active {
-        background: #667eea;
-        color: white;
-        border-color: #667eea;
+        background: linear-gradient(90deg, rgba(91,124,250,0.14), rgba(126,87,194,0.14));
+        color: #0b1020;
+        border-color: rgba(91,124,250,0.45);
+        box-shadow: 0 4px 14px rgba(91,124,250,0.18);
     }
-    
+
     /* Alert Styles */
     .alert {
         padding: 1rem;
@@ -148,16 +168,10 @@ st.markdown("""
     
     /* Mobile Responsive */
     @media (max-width: 768px) {
-        .header-title {
-            font-size: 1.8rem;
-        }
-        .metric-value {
-            font-size: 1.5rem;
-        }
-        .nav-button {
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-        }
+        .header-title { font-size: 1.05rem; }
+        .flag-icon { height: 22px; }
+        .metric-value { font-size: 1.35rem; }
+        .nav-button { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
     }
     
     /* Hide Streamlit default elements */
@@ -166,20 +180,10 @@ st.markdown("""
     .stDeployButton {display:none;}
     
     /* Custom scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #667eea;
-        border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #5a6fd8;
-    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #667eea; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5a6fd8; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -248,45 +252,41 @@ class MalnutritionDashboard:
     
     def render_header(self):
         """Render the header section"""
-        st.markdown("""
-        <div class="header-container">
-            <div class="header-title">🇷🇼 Rwanda Malnutrition Intelligence Platform</div>
-            <div class="header-subtitle">Ending Hidden Hunger Through Data-Driven Solutions</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    def render_navigation(self):
-        """Render navigation menu"""
-        st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            if st.button("📊 Dashboard", key="nav_dashboard"):
-                st.session_state.current_page = "dashboard"
-                st.rerun()
-        
-        with col2:
-            if st.button("🗺️ Interactive Map", key="nav_map"):
-                st.session_state.current_page = "map"
-                st.rerun()
-        
-        with col3:
-            if st.button("🤖 AI Predictions", key="nav_predictions"):
-                st.session_state.current_page = "predictions"
-                st.rerun()
-        
-        with col4:
-            if st.button("📋 Policy Briefs", key="nav_policy"):
-                st.session_state.current_page = "policy"
-                st.rerun()
-        
-        with col5:
-            if st.button("📈 Analytics", key="nav_analytics"):
-                st.session_state.current_page = "analytics"
-                st.rerun()
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+        col_left, col_right = st.columns([1, 1])
+        with col_left:
+            st.markdown("""
+            <div class="header-container">
+                <img class="flag-icon" src="https://upload.wikimedia.org/wikipedia/commons/1/17/Flag_of_Rwanda.svg" alt="Rwanda Flag"/>
+                <div>
+                    <div class="header-title">Rwanda Malnutrition Intelligence Platform</div>
+                    <div class="header-subtitle">Ending Hidden Hunger Through Data-Driven Solutions</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_right:
+            st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+            nav_cols = st.columns(5)
+            with nav_cols[0]:
+                if st.button("📊 Dashboard", key="nav_dashboard", use_container_width=True):
+                    st.session_state.current_page = "dashboard"
+                    st.rerun()
+            with nav_cols[1]:
+                if st.button("🗺️ Map", key="nav_map", use_container_width=True):
+                    st.session_state.current_page = "map"
+                    st.rerun()
+            with nav_cols[2]:
+                if st.button("🤖 Predictions", key="nav_predictions", use_container_width=True):
+                    st.session_state.current_page = "predictions"
+                    st.rerun()
+            with nav_cols[3]:
+                if st.button("📋 Policy", key="nav_policy", use_container_width=True):
+                    st.session_state.current_page = "policy"
+                    st.rerun()
+            with nav_cols[4]:
+                if st.button("📈 Analytics", key="nav_analytics", use_container_width=True):
+                    st.session_state.current_page = "analytics"
+                    st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
     
     def render_dashboard_page(self):
         """Render the main dashboard page"""
@@ -755,7 +755,7 @@ class MalnutritionDashboard:
         
         # Render components
         self.render_header()
-        self.render_navigation()
+        # self.render_navigation() # This line is removed as per the new_code, as the navigation is now in render_header
         
         # Render current page
         if st.session_state.current_page == "dashboard":
