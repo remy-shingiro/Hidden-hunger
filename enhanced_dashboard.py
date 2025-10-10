@@ -343,6 +343,25 @@ st.markdown("""
     /* Soft pulse for critical cards */
     .pulse-critical { animation: pulse 1400ms ease-in-out infinite; }
     @keyframes pulse { 0%{ box-shadow: 0 0 0 0 rgba(255,107,107,0.35);} 70%{ box-shadow: 0 0 0 10px rgba(255,107,107,0);} 100%{ box-shadow:0 0 0 0 rgba(255,107,107,0);} }
+
+    /* Remove extra whitespace below embedded iframes (e.g., risk district cards) */
+    div[data-testid="element-container"]:has(> iframe),
+    div[data-testid="element-container"]:has(> div iframe) {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    /* Tighten bottom spacing globally at the page/block level */
+    .block-container { padding-bottom: 0 !important; }
+    div[data-testid="stVerticalBlock"] > div[data-testid="element-container"]:last-child { margin-bottom: 0 !important; }
+
+    /* Remove trailing margins in markdown containers that often cause gaps */
+    .stMarkdown { margin-bottom: 0 !important; }
+    .stMarkdown p:last-child { margin-bottom: 0 !important; }
+    .stMarkdown h3 { margin-bottom: 0.5rem !important; }
+
+    /* Ensure last metric-card in a stack has no bottom margin */
+    .metric-card:last-child { margin-bottom: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -649,7 +668,7 @@ class MalnutritionDashboard:
         </html>
         """
         )
-        components.html(full_html, height=380, scrolling=False)
+        components.html(full_html, height=300, scrolling=False)
     
     def render_map_page(self):
         """Render the interactive map page"""
