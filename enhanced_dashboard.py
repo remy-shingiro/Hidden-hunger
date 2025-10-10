@@ -115,7 +115,7 @@ st.markdown("""
         background: #ffffff;
         border: 1px solid #e6e8f0;
         padding: 0.45rem 0.9rem;
-        border-radius: 9999px;
+        border-radius: 0;
         margin: 0.2rem;
         cursor: pointer;
         transition: all 0.18s ease-in-out;
@@ -184,6 +184,85 @@ st.markdown("""
     ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
     ::-webkit-scrollbar-thumb { background: #667eea; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #5a6fd8; }
+
+    /* Grounded look: subtle resting shadow and slightly stronger hover shadow */
+    .nav-wrap .stButton > button {
+        width: 100% !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        border-radius: 0 !important;
+        background-image: linear-gradient(90deg, #5b7cfa, #7e57c2) !important;
+        background-color: #5b7cfa !important;
+        color: #ffffff !important;
+        border: 2px solid rgba(91,124,250,0.95) !important;
+        padding: 0.6rem 0.95rem !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        /* Subtle, grounded shadow */
+        box-shadow: 0 2px 6px rgba(17,24,39,0.12), 0 1px 1px rgba(17,24,39,0.06) !important;
+        transition: box-shadow 0.18s ease-in-out, transform 0.18s ease-in-out !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .nav-wrap .stButton > button:hover {
+        background-image: linear-gradient(90deg, #516df7, #6f4fb6) !important;
+        background-color: #516df7 !important;
+        color: #ffffff !important;
+        border-color: rgba(91,124,250,1) !important;
+        /* Slightly stronger hover shadow, minimal lift */
+        box-shadow: 0 6px 14px rgba(17,24,39,0.18), 0 2px 2px rgba(17,24,39,0.08) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Apply same grounded style globally so buttons feel consistent */
+    .stButton > button,
+    button[kind],
+    button[data-testid="baseButton-primary"],
+    button[data-testid="baseButton-secondary"] {
+        border-radius: 0 !important;
+        background-image: linear-gradient(90deg, #5b7cfa, #7e57c2) !important;
+        background-color: #5b7cfa !important;
+        color: #ffffff !important;
+        border: 2px solid rgba(91,124,250,0.95) !important;
+        padding: 0.6rem 1rem !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        box-shadow: 0 2px 6px rgba(17,24,39,0.12), 0 1px 1px rgba(17,24,39,0.06) !important;
+        transition: box-shadow 0.18s ease-in-out, transform 0.18s ease-in-out !important;
+        min-height: 44px !important;
+        height: 44px !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    .stButton > button:hover,
+    button[kind]:hover,
+    button[data-testid="baseButton-primary"]:hover,
+    button[data-testid="baseButton-secondary"]:hover {
+        background-image: linear-gradient(90deg, #516df7, #6f4fb6) !important;
+        background-color: #516df7 !important;
+        color: #ffffff !important;
+        border-color: rgba(91,124,250,1) !important;
+        box-shadow: 0 6px 14px rgba(17,24,39,0.18), 0 2px 2px rgba(17,24,39,0.08) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .stButton > button:active,
+    button[kind]:active,
+    button[data-testid="baseButton-primary"]:active,
+    button[data-testid="baseButton-secondary"]:active {
+        transform: translateY(0) !important;
+        box-shadow: 0 2px 8px rgba(91,124,250,0.25) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -265,7 +344,7 @@ class MalnutritionDashboard:
             """, unsafe_allow_html=True)
         with col_right:
             st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-            nav_cols = st.columns(5)
+            nav_cols = st.columns([1.4, 1, 1.6, 1, 1.1])
             with nav_cols[0]:
                 if st.button("📊 Dashboard", key="nav_dashboard", use_container_width=True):
                     st.session_state.current_page = "dashboard"
