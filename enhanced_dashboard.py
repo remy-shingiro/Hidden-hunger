@@ -58,7 +58,7 @@ st.markdown("""
         border-radius: 6px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.15);
     }
-
+    
     .header-title {
         font-size: 1.25rem;
         font-weight: 700;
@@ -72,7 +72,7 @@ st.markdown("""
         font-weight: 400;
         margin: 0;
     }
-
+    
     /* Card Styles */
     .metric-card {
         background: white;
@@ -140,7 +140,7 @@ st.markdown("""
         border-color: rgba(91,124,250,0.45);
         box-shadow: 0 4px 14px rgba(91,124,250,0.18);
     }
-
+    
     /* Alert Styles */
     .alert {
         padding: 1rem;
@@ -270,10 +270,7 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
         font-weight: 800;
         font-size: 1.35rem;
-        background: linear-gradient(90deg, #5b7cfa, #7e57c2);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        color: #000000;
         letter-spacing: .2px;
         margin-bottom: 0.75rem;
     }
@@ -330,6 +327,22 @@ st.markdown("""
     .risk-yellow { background: linear-gradient(135deg, #ffeaa7, #fdcb6e); color: #2b1d03; }
 
     @keyframes slideUpFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Severity badge styles */
+    .sev { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; font-weight:800; font-size:.78rem; letter-spacing:.2px; }
+    .sev-critical { background: rgba(255,107,107,0.2); color:#3b0a0a; border:1px solid rgba(255,107,107,0.4); }
+    .sev-high { background: rgba(255,179,71,0.25); color:#3b1f06; border:1px solid rgba(255,179,71,0.45); }
+    .sev-moderate { background: rgba(253,203,110,0.25); color:#3b2a07; border:1px solid rgba(253,203,110,0.45); }
+
+    /* Left accent bar per severity */
+    .accent { position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:6px 0 0 6px; opacity:.9; }
+    .accent-critical { background:#ff6b6b; }
+    .accent-high { background:#ffb347; }
+    .accent-moderate { background:#fdcb6e; }
+
+    /* Soft pulse for critical cards */
+    .pulse-critical { animation: pulse 1400ms ease-in-out infinite; }
+    @keyframes pulse { 0%{ box-shadow: 0 0 0 0 rgba(255,107,107,0.35);} 70%{ box-shadow: 0 0 0 10px rgba(255,107,107,0);} 100%{ box-shadow:0 0 0 0 rgba(255,107,107,0);} }
 </style>
 """, unsafe_allow_html=True)
 
@@ -512,7 +525,8 @@ class MalnutritionDashboard:
             st.plotly_chart(fig, use_container_width=True)
         
         # Top 5 high-risk districts (modern leaderboard)
-        st.markdown('<div class="gradient-title">🚨 Top 5 High-Risk Districts</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gradient-title">⚠️ AI-Identified High-Risk Districts</div>', unsafe_allow_html=True)
+        st.markdown('<div style="margin:-2px 0 10px 0; color:#475569; font-size:0.95rem;">Based on AI-driven malnutrition risk probabilities.</div>', unsafe_allow_html=True)
 
         # Compute top 5 by risk_probability with fallback logic
         df_copy = self.data.copy()
@@ -527,23 +541,35 @@ class MalnutritionDashboard:
             prob_pct = int(round(prob * 100))
             if prob_pct >= 90:
                 theme_class = "risk-red"
+                sev_class = "sev sev-critical"
+                sev_label = "Critical Risk"
+                accent_class = "accent accent-critical"
+                pulse_class = " pulse-critical"
             elif prob_pct >= 75:
                 theme_class = "risk-orange"
+                sev_class = "sev sev-high"
+                sev_label = "High Risk"
+                accent_class = "accent accent-high"
+                pulse_class = ""
             else:
                 theme_class = "risk-yellow"
+                sev_class = "sev sev-moderate"
+                sev_label = "Moderate Risk"
+                accent_class = "accent accent-moderate"
+                pulse_class = ""
 
             district_name = str(row.get("District", "Unknown"))
             mal_idx = float(row.get("Malnutrition_Index", 0.0))
             children = int(row.get("Children_Under5", 0))
 
-            # Inline CSS variables: --target for progress fill width; --p for circular gauge
             card_html = f"""
-            <div class="risk-card {theme_class}" style="animation-delay:{idx*80}ms">
+            <div class="risk-card {theme_class}{pulse_class}" style="animation-delay:{idx*80}ms">
+              <div class="{accent_class}"></div>
               <div class="risk-ribbon"></div>
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                 <div>
-                  <div class="risk-rank">#{idx}</div>
                   <div class="risk-district">{district_name}</div>
+                  <div class="{sev_class}"><span class="sev-label">{sev_label}</span></div>
                 </div>
                 <div class="gauge" style="--p:{prob_pct};" title="{prob_pct}%"></div>
               </div>
@@ -721,26 +747,26 @@ class MalnutritionDashboard:
             # Card 1
             total = len(self.geo_data)
             st.markdown(f"""
-            <div class=\"metric-card\"> 
-                <div class=\"metric-value\">{total}</div>
-                <div class=\"metric-label\">Total Districts</div>
+            <div class="metric-card"> 
+                <div class="metric-value">{total}</div>
+                <div class="metric-label">Total Districts</div>
             </div>
             """, unsafe_allow_html=True)
             # Card 2
             high_risk_count = int((self.geo_data.get("predicted_risk_level", "").astype(str) == "High").sum()) if "predicted_risk_level" in self.geo_data.columns else 0
             st.markdown(f"""
-            <div class=\"metric-card\"> 
-                <div class=\"metric-value\">{high_risk_count}</div>
-                <div class=\"metric-label\">High Risk Districts</div>
+            <div class="metric-card"> 
+                <div class="metric-value">{high_risk_count}</div>
+                <div class="metric-label">High Risk Districts</div>
             </div>
             """, unsafe_allow_html=True)
             # Card 3
             risk_probs = pd.to_numeric(self.geo_data.get('risk_probability', pd.Series(dtype=float)), errors='coerce').fillna(0)
             avg_risk = risk_probs.mean()
             st.markdown(f"""
-            <div class=\"metric-card\"> 
-                <div class=\"metric-value\">{avg_risk:.1%}</div>
-                <div class=\"metric-label\">Average Risk Probability</div>
+            <div class="metric-card"> 
+                <div class="metric-value">{avg_risk:.1%}</div>
+                <div class="metric-label">Average Risk Probability</div>
             </div>
             """, unsafe_allow_html=True)
     
