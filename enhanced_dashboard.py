@@ -6,6 +6,7 @@ import pandas as pd
 import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
+import streamlit.components.v1 as components
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -263,6 +264,72 @@ st.markdown("""
         transform: translateY(0) !important;
         box-shadow: 0 2px 8px rgba(91,124,250,0.25) !important;
     }
+
+    /* ========== Risk Leaderboard Cards ========== */
+    .gradient-title {
+        font-family: 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 1.35rem;
+        background: linear-gradient(90deg, #5b7cfa, #7e57c2);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        letter-spacing: .2px;
+        margin-bottom: 0.75rem;
+    }
+
+    .risk-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        align-items: stretch;
+        justify-items: stretch;
+    }
+    @media (max-width: 1200px) {
+        .risk-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 800px) {
+        .risk-grid { grid-template-columns: repeat(1, 1fr); }
+    }
+
+    .risk-card {
+        position: relative;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(15,23,42,0.08);
+        box-shadow: 0 4px 12px rgba(17,24,39,0.10);
+        color: #0b1020;
+        background: #fff;
+        overflow: hidden;
+        transform: translateY(6px);
+        opacity: 0;
+        animation: slideUpFade 420ms ease forwards;
+    }
+    .risk-card:hover { transform: translateY(0) scale(1.01); box-shadow: 0 10px 24px rgba(17,24,39,0.18); }
+
+    .risk-ribbon {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, rgba(255,255,255,0.25), rgba(255,255,255,0.00));
+        pointer-events: none;
+    }
+
+    .risk-rank { font-weight: 900; font-size: 1.1rem; }
+    .risk-district { font-weight: 800; font-size: 1rem; margin-top: 2px; }
+
+    .risk-meta { display: flex; gap: 10px; align-items: center; margin-top: 10px; font-size: 0.9rem; }
+    .risk-meta .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,0.6); border: 1px solid rgba(15,23,42,0.06); }
+
+    .progress { width: 100%; height: 10px; background: rgba(255,255,255,0.55); border-radius: 999px; border: 1px solid rgba(15,23,42,0.06); overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #6366f1); }
+    .progress-label { font-size: 0.85rem; font-weight: 700; margin-top: 8px; }
+
+    /* Risk color themes */
+    .risk-red { background: linear-gradient(135deg, #ff6b6b, #ff8e8e); color: #1d0606; }
+    .risk-orange { background: linear-gradient(135deg, #ffb347, #ffd56b); color: #201305; }
+    .risk-yellow { background: linear-gradient(135deg, #ffeaa7, #fdcb6e); color: #2b1d03; }
+
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -444,31 +511,118 @@ class MalnutritionDashboard:
             fig.update_layout(xaxis_title="Month", yaxis_title="Malnutrition Index")
             st.plotly_chart(fig, use_container_width=True)
         
-        # Top 5 high-risk districts (ensure we always show 5)
-        st.subheader("🚨 Top 5 High-Risk Districts")
-        high_only = self.data[self.data["predicted_risk_level"] == "High"].copy()
-        high_only["risk_probability"] = pd.to_numeric(high_only.get("risk_probability"), errors="coerce").fillna(0)
-        top_high = high_only.sort_values("risk_probability", ascending=False).head(5)
-        if len(top_high) < 5:
-            # Fill remaining with next highest by risk_probability overall
-            remaining = 5 - len(top_high)
-            others = self.data[~self.data["District"].isin(top_high["District"])].copy()
-            others["risk_probability"] = pd.to_numeric(others.get("risk_probability"), errors="coerce").fillna(0)
-            fallback = others.sort_values("risk_probability", ascending=False).head(remaining)
-            top_five = pd.concat([top_high, fallback])
-        else:
-            top_five = top_high
-        
-        for idx, (_, district) in enumerate(top_five.iterrows(), 1):
-            risk_class = "alert-high" if float(district["risk_probability"]) > 0.8 else "alert-medium"
-            st.markdown(f"""
-            <div class="alert {risk_class}">
-                <strong>{idx}. {district['District']}</strong><br>
-                Risk Probability: {float(district['risk_probability']):.1%} | 
-                Malnutrition Index: {float(district['Malnutrition_Index']):.1f} | 
-                Children Affected: {int(district['Children_Under5']):,}
+        # Top 5 high-risk districts (modern leaderboard)
+        st.markdown('<div class="gradient-title">🚨 Top 5 High-Risk Districts</div>', unsafe_allow_html=True)
+
+        # Compute top 5 by risk_probability with fallback logic
+        df_copy = self.data.copy()
+        df_copy["risk_probability"] = pd.to_numeric(df_copy.get("risk_probability"), errors="coerce").fillna(0)
+        df_copy["Children_Under5"] = pd.to_numeric(df_copy.get("Children_Under5"), errors="coerce").fillna(0)
+        top5 = df_copy.sort_values("risk_probability", ascending=False).head(5)
+
+        # Build card HTML for each row
+        cards = []
+        for idx, (_, row) in enumerate(top5.iterrows(), 1):
+            prob = float(row["risk_probability"]) if not pd.isna(row["risk_probability"]) else 0.0
+            prob_pct = int(round(prob * 100))
+            if prob_pct >= 90:
+                theme_class = "risk-red"
+            elif prob_pct >= 75:
+                theme_class = "risk-orange"
+            else:
+                theme_class = "risk-yellow"
+
+            district_name = str(row.get("District", "Unknown"))
+            mal_idx = float(row.get("Malnutrition_Index", 0.0))
+            children = int(row.get("Children_Under5", 0))
+
+            # Inline CSS variables: --target for progress fill width; --p for circular gauge
+            card_html = f"""
+            <div class="risk-card {theme_class}" style="animation-delay:{idx*80}ms">
+              <div class="risk-ribbon"></div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div>
+                  <div class="risk-rank">#{idx}</div>
+                  <div class="risk-district">{district_name}</div>
+                </div>
+                <div class="gauge" style="--p:{prob_pct};" title="{prob_pct}%"></div>
+              </div>
+              <div class="progress" aria-label="Risk Probability">
+                <div class="progress-fill" style="--target:{prob_pct}%;"></div>
+              </div>
+              <div class="progress-label">Risk Probability: {prob_pct}%</div>
+              <div class="risk-meta">
+                <span class="chip">📉 Index: {mal_idx:.1f}</span>
+                <span class="chip">👶 Children: {children:,}</span>
+              </div>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            cards.append(card_html)
+
+        # Assemble full HTML with inline CSS so styles apply inside the iframe
+        full_html = (
+            """
+        <html>
+        <head>
+          <meta charset=\"utf-8\" />
+          <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+          <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap\" rel=\"stylesheet\">
+          <style>
+            :root { --glass: rgba(255,255,255,0.30); --glass-border: rgba(255,255,255,0.40); --shadow: rgba(17,24,39,0.12); }
+
+            .risk-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-items: stretch; justify-items: stretch; }
+            @media (max-width: 1200px) { .risk-grid { grid-template-columns: repeat(3, 1fr); } }
+            @media (max-width: 800px)  { .risk-grid { grid-template-columns: repeat(1, 1fr); } }
+
+            /* Card base with glassmorphism */
+            .risk-card { position: relative; padding: 14px; border-radius: 12px; border: 1px solid var(--glass-border);
+                         box-shadow: 0 2px 8px var(--shadow); color: #0b1020; background: var(--glass);
+                         overflow: hidden; transform: translateY(8px); opacity: 0; backdrop-filter: blur(10px);
+                         animation: slideUpFade 520ms ease forwards; transition: transform .2s ease, box-shadow .2s ease; }
+            .risk-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(17,24,39,0.20), 0 0 0 1px rgba(255,255,255,0.35) inset; }
+
+            /* Risk background tint layers */
+            .risk-card.risk-red::before, .risk-card.risk-orange::before, .risk-card.risk-yellow::before {
+              content: \"\"; position: absolute; inset: 0; z-index: -1; opacity: .85;
+            }
+            .risk-card.risk-red::before { background: linear-gradient(135deg, #ff6b6b, #ff8e8e); }
+            .risk-card.risk-orange::before { background: linear-gradient(135deg, #ffb347, #ffd56b); }
+            .risk-card.risk-yellow::before { background: linear-gradient(135deg, #ffeaa7, #fdcb6e); }
+
+            .risk-ribbon { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,0.18), rgba(255,255,255,0.00)); pointer-events: none; }
+            .risk-rank { font-weight: 900; font-size: 1.1rem; }
+            .risk-district { font-weight: 800; font-size: 1rem; margin-top: 2px; }
+
+            /* Progress bar with animated fill to target (uses CSS var --target) */
+            .progress { width: 100%; height: 10px; background: rgba(255,255,255,0.55); border-radius: 999px; border: 1px solid rgba(15,23,42,0.06); overflow: hidden; margin-top: 10px; }
+            .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, #0ea5e9, #6366f1); animation: fill 900ms ease forwards; }
+            .progress-label { font-size: 0.85rem; font-weight: 700; margin-top: 8px; }
+
+            /* Circular gauge using conic-gradient; set --p:[0-100] */
+            .gauge { --p: 0; width: 36px; height: 36px; border-radius: 50%;
+                     background: conic-gradient(#0ea5e9 calc(var(--p) * 1%), rgba(255,255,255,0.35) 0);
+                     display: inline-grid; place-items: center; border: 1px solid rgba(255,255,255,0.5); }
+            .gauge::after { content: \"\"; width: 26px; height: 26px; background: rgba(255,255,255,0.85); border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(15,23,42,0.06); }
+
+            .risk-meta { display: flex; gap: 10px; align-items: center; margin-top: 10px; font-size: 0.9rem; flex-wrap: wrap; }
+            .risk-meta .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px;
+                               background: rgba(255,255,255,0.6); border: 1px solid rgba(15,23,42,0.06); }
+
+            @keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes fill { from { width: 0; } to { width: var(--target); } }
+
+            body { margin: 0; padding: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+          </style>
+        </head>
+        <body>
+        """
+            + ("<div class='risk-grid'>" + "".join(cards) + "</div>") +
+            """
+        </body>
+        </html>
+        """
+        )
+        components.html(full_html, height=480, scrolling=False)
     
     def render_map_page(self):
         """Render the interactive map page"""
